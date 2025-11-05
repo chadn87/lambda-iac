@@ -1,0 +1,20 @@
+{
+  "targets": {
+    "run": {
+      "label": "Main",
+      "command": "terraform validate"
+    },
+    "init": {
+      "label": "Terraform Init",
+      "command": "terraform init"
+    },
+    "graph": {
+      "label": "Terraform Graph",
+      "command": "terraform graph > graph.dot"
+    },
+    "apply": {
+      "label": "Terraform Apply",
+      "command": "terraform apply"
+    }
+  }
+}

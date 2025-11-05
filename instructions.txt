@@ -1,0 +1,8 @@
+Complete the AWS Lambda function definition by implementing all of the TODO
+items in main.tf. The completed function should execute the pricing.py file
+using a compatible version of Python.
+
+Proof of completion should be provided as:
+1) main.tf, completed.
+2) The function URL, which should be callable to verify correctness.
+3) The logs from a successful function invocation.
