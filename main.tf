@@ -28,7 +28,7 @@ resource "aws_iam_role" "pricing_demo" {
     ]
   })
 }
-# TODO: Get a better understand on how this works with the iam role
+
 resource "aws_iam_role_policy_attachment" "pricing_demo_eni_attachment" {
   role       = aws_iam_role.pricing_demo.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
@@ -46,36 +46,67 @@ resource "aws_internet_gateway" "pricing_demo" {
 
 data "aws_availability_zones" "available" {}
 
-resource "aws_subnet" "pricing_demo" {
+resource "aws_subnet" "pricing_demo_private" {
   vpc_id            = aws_vpc.pricing_demo.id
   cidr_block        = cidrsubnet(aws_vpc.pricing_demo.cidr_block, 8, 0)
   availability_zone = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = false
 
   tags = {
-    Name = "${data.aws_availability_zones.available.names[0]}_pricing_demo"
+    Name = "${data.aws_availability_zones.available.names[0]}_pricing_demo_private"
   }
 }
 
-resource "aws_route_table" "pricing_demo" {
-  # TODO: implement route table (partial done maybe....I am not sure)
+resource "aws_subnet" "pricing_demo_public" {
+  vpc_id            = aws_vpc.pricing_demo.id
+  cidr_block        = cidrsubnet(aws_vpc.pricing_demo.cidr_block, 8, 1)
+  availability_zone = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${data.aws_availability_zones.available.names[0]}_pricing_demo_public"
+  }
+}
+
+resource "aws_route_table" "pricing_demo_private" {
+  # TODO: implement route table (DONE)
   vpc_id = aws_vpc.pricing_demo.id
 
   route {
-    cidr_block = aws_vpc.pricing_demo.cidr_block
-    gateway_id = "local"
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.pricing_demo.id
   }
-  #public internet traffic
+}
+
+resource "aws_route_table" "pricing_demo_public" {
+  vpc_id = aws_vpc.pricing_demo.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.pricing_demo.id
   }
 }
 
-resource "aws_route_table_association" "pricing_demo" {
+resource "aws_route_table_association" "pricing_demo_private" {
   depends_on = [aws_subnet.pricing_demo]
 
   subnet_id      = aws_subnet.pricing_demo.id
   route_table_id = aws_route_table.pricing_demo.id
+}
+
+resource "aws_route_table_association" "pricing_demo_public" {
+  subnet_id      = aws_subnet.pricing_demo_public.id
+  route_table_id = aws_route_table.pricing_demo_public.id
+}
+
+resource "aws_eip" "nat" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "pricing_demo" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.pricing_demo_public.id
+  depends_on    = [aws_internet_gateway.pricing_demo]
 }
 
 resource "aws_security_group" "pricing_demo" {
@@ -107,19 +138,25 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4" {
 # Zip the python code
 data "archive_file" "pricing_demo_zip" {
   type        = "zip"
-  source_file = "${path.module}/pricing.py"
+  source_dir = "${path.module}/pricing"
   output_path = "${path.module}/pricing.zip"
 }
 
 resource "aws_lambda_function" "pricing_demo" {
-  # TODO: implement function
+  # TODO: implement function (DONE)
   filename      = data.archive_file.pricing_demo_zip.output_path
   function_name = "pricing_demo_function"
   role          = aws_iam_role.pricing_demo.arn
   handler       = "pricing.handler"
-  runtime       = "python3.13"
+  runtime       = "python3.12"
   memory_size   = 1024
   timeout       = 30
+
+  environment {
+    variables = {
+      "SEED" = 2
+    }
+  }
 
   vpc_config {
     subnet_ids         = [aws_subnet.pricing_demo.id]
@@ -133,12 +170,12 @@ resource "aws_lambda_function" "pricing_demo" {
   }
 }
 
-# TODO: implement function url (Partial complete)
+# TODO: implement function url (DONE)
 resource "aws_lambda_function_url" "pricing_demo" {
   function_name      = aws_lambda_function.pricing_demo.function_name
-  authorization_type = "NONE" # keeping in comment in case this is easier for testing
-  # authorization_type = "AWS_IAM"
+  authorization_type = "NONE" # keeping to make testing easier
 }
+
 output "aws_lambda_function_url" {
   description = "The URL for the pricing lmbda"
   value       = aws_lambda_function_url.pricing_demo.function_url
@@ -186,7 +223,6 @@ resource "aws_sns_topic_subscription" "email_chad" {
   endpoint  = "chadn87@gmail.com"
 }
 
-## Extra stuff I added
 # Resource group to easily see all resources
 resource "aws_resourcegroups_group" "judi_pricing_demo" {
   name = "judi-pricing-demo-group"
