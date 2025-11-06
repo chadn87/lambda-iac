@@ -88,10 +88,8 @@ resource "aws_route_table" "pricing_demo_public" {
 }
 
 resource "aws_route_table_association" "pricing_demo_private" {
-  depends_on = [aws_subnet.pricing_demo]
-
-  subnet_id      = aws_subnet.pricing_demo.id
-  route_table_id = aws_route_table.pricing_demo.id
+  subnet_id      = aws_subnet.pricing_demo_private.id
+  route_table_id = aws_route_table.pricing_demo_private.id
 }
 
 resource "aws_route_table_association" "pricing_demo_public" {
@@ -159,7 +157,7 @@ resource "aws_lambda_function" "pricing_demo" {
   }
 
   vpc_config {
-    subnet_ids         = [aws_subnet.pricing_demo.id]
+    subnet_ids         = [aws_subnet.pricing_demo_private.id]
     security_group_ids = [aws_security_group.pricing_demo.id]
   }
 
