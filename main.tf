@@ -7,8 +7,8 @@ provider "aws" {
   }
   # shared_credentials_files = ["%USERPROFILE%/.aws/credentials"]
   ## Below is only for live demo not on my machine
-  access_key = "AKIAZH7ISTLXURLCGRHF"
-  secret_key = "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"
+  access_key = ""
+  secret_key = ""
 }
 
 resource "aws_iam_role" "pricing_demo" {
